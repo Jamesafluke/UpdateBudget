@@ -1,0 +1,37 @@
+Write a program in PowerShell. The goal is to help me update my budget by reading expenses from csv files, ignoring duplicates, and populating my budget spreadsheet.
+
+2023Budget.xlsx is my budget spreadsheet. It has 12 tabs for the 12 months (tab names are Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec). Each of those months has rows and columns of expenses in it (columns s-w starting on row 8) where the month's expenses are listed. 
+
+rewards.csv is my csv export from my bank account. 
+
+result.csv is where the data will be exported.
+
+Each time I run the PowerShell script, compare each expense from rewards.csv to the existing list of expenses in 2023Budget.xlsx for only the current month and previous month. If the dollar amount and the date are the same as an existing expense in 2023Budget.xlsx for the given month, consider it a duplicate and don't add it. If it's not a duplicate, append it to the bottom of result.csv.
+
+
+The xlsx columns (starting on row 8):
+Column s is the date of the expense. Format is mm/dd/yy.
+Column t is the description.
+Column u should be left blank.
+Column v should be left blank.
+Column w is the dollar amount.
+
+The csv columns:
+Column a can be ignored.
+Column b is the date of the expense. Format is mm/dd/yyyy. Should be used to compare and identify duplicates. If it's not a duplicate should be copied into column s of the xlsx.
+column c should be ignored.
+column d is the description. Should be copied into column t of 2023Budget.xlsx (if the expense isn't a duplicate).
+Column e is the dollar amount. Should be used to compare and identify duplicates. Should be copied into column w of 2023Budget.xlsx (if the expense isn't a duplicate).
+Column f is credit. If this column has something in it, discard the expense.
+Columns g, h, and i should be ignored.
+
+The format for result.csv:
+Column a is the date of the expense. Format is mm/dd/yy. 
+Column b is the description.
+Column c should be left blank.
+Column d should be left blank.
+Column e is the dollar amount.
+
+2023Budget.xlsx is located at C:\Users\james\OneDrive\Budget\2023Budget.xlsx
+rewards.csv is located at C:\Users\james\Downloads\rewards.csv
+result.csv should be created at C:\Users\james\Downloads\result.csv
