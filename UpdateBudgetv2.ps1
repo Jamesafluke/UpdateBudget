@@ -1,8 +1,13 @@
 # Define paths
 # $budgetPath = "C:\Users\james\OneDrive\Budget\2023Budget.xlsx"
-$budgetPath = "C:\Users\james\OneDrive\Budget\TestBudget.xlsx"
-$csvPath = "C:\Users\james\Downloads\rewards.csv"
-$outputPath = "C:\Users\james\OneDrive\Budget\output.csv"
+# $budgetPath = "C:\Users\james\OneDrive\Budget\TestBudget.xlsx"
+# $csvPath = "C:\Users\james\Downloads\rewards.csv"
+# $outputPath = "C:\Users\james\OneDrive\Budget\output.csv"
+
+$budgetPath = "C:\PersonalMyCode\UpdateBudget\TestBudget.xlsx"
+$csvPath = "C:\PersonalMyCode\UpdateBudget\rewards.csv"
+$outputPath = "C:\PersonalMyCode\UpdateBudget\output.csv"
+
 
 # Load ImportExcel module
 Import-Module -Name ImportExcel
@@ -20,9 +25,16 @@ function Update-Budget($csvPath) {
     $csvData = Import-Csv $csvPath | Where-Object { $_.Credit -eq "" }
     
     Write-Host "Import data from budget."
-    $worksheet = Import-Excel -Path $budgetPath -WorksheetName $month
+    # Import worksheet
+    $worksheet = Import-Excel -Path $budgetPath -WorksheetName $month -NoHeader
     # Filter data from columns S through W, starting from row 8 and below
-    $dataToExport = $mayWorksheet | Select-Object -Skip 7 | Select-Object S,W
+    # $existingExpenses = $worksheet | Select-Object -Skip 7 | Select-Object -Property S,W
+    $existingExpenses = $worksheet | Select-Object -Skip 7 | Select-Object -Property @{Name='Date'; Expression={$_.S}}, @{Name='Amount'; Expression={$_.W}}
+
+
+    # Debug
+    Write-Host $existingExpenses
+    
     
     $updatedBudgetData = @()
 
