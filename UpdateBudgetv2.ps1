@@ -4,58 +4,53 @@
 # $csvPath = "C:\Users\james\Downloads\rewards.csv"
 # $outputPath = "C:\Users\james\OneDrive\Budget\output.csv"
 
-$budgetPath = "C:\PersonalMyCode\UpdateBudget\TestBudget.xlsx"
+# $budgetPath = "C:\PersonalMyCode\UpdateBudget\TestBudget.xlsx"
+$budgetPath = "C:\PersonalMyCode\UpdateBudget\TestBudgetSimple.csv"
 $csvPath = "C:\PersonalMyCode\UpdateBudget\rewards.csv"
-$outputPath = "C:\PersonalMyCode\UpdateBudget\output.csv"
+$outputPath = "C:\PersonalMyCode\UpdateBudget\output"
 
 
 # Load ImportExcel module
 Import-Module -Name ImportExcel
 
-#Get month.
-$userInput = read-Host "Provide the number of the month"
-$monthNames = @("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-$month = $monthNames[$userInput - 1]
-Write-Host $month
+# #Get month.
+# $userInput = read-Host "Provide the number of the month"
+# $monthNames = @("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+# $month = $monthNames[$userInput - 1]
+# Write-Host $month
+$month = "Sheet1"
 
 
 # Function to compare expenses and update spreadsheet
 function Update-Budget($csvPath) {
-    Write-Host "Import csv."
-    $csvData = Import-Csv $csvPath | Where-Object { $_.Credit -eq "" }
+    $bankData = Import-Csv $csvPath
+    $oldBudgetData = Import-Csv -Path $budgetPath    
     
-    Write-Host "Import data from budget."
-    # Import worksheet
-    $worksheet = Import-Excel -Path $budgetPath -WorksheetName $month -NoHeader
-    # Filter data from columns S through W, starting from row 8 and below
-    # $existingExpenses = $worksheet | Select-Object -Skip 7 | Select-Object -Property S,W
-    $existingExpenses = $worksheet | Select-Object -Skip 7 | Select-Object -Property @{Name='Date'; Expression={$_.S}}, @{Name='Amount'; Expression={$_.W}}
+    $updatedoldBudgetData = @()
 
-
-    # Debug
-    Write-Host $existingExpenses
-    
-    
-    $updatedBudgetData = @()
-
-    foreach ($item in $csvData) {
-        $existingExpense = $budgetData | Where-Object { $_.Date -eq $item.Date -and $_.Amount -eq $item.Amount }
-        $isDuplicate = $existingExpense -ne $null
+    foreach ($item in $bankData) {
+        # $existingExpense = $oldBudgetData | Where-Object { $_."Date" -eq $item.PostDate -and $_.Amount -eq $item.Amount }\
+        # Write-Host "bankData date is $item.date"
+        Write-Host "oldBudgetData date is " $_.date
+        $existingExpense = $oldBudgetData | Where-Object { $_."Date" -eq $item.Date }
+        $isDuplicate = $null -ne $existingExpense
 
         if (-not ($isDuplicate)) {
             $newExpense = [PSCustomObject]@{
                 Date   = $item.Date
                 Item   = $item.Description
-                Method = "Rewards"
+                Method = ""
                 Amount = $item.Amount
             }
+            # Write-Host "Item date: $item.PostDate"
             $updatedBudgetData += $newExpense
         }
     }
 
-    if ($updatedBudgetData.Count -gt 0) {
-        Export-Excel -Path $budgetPath -WorkSheetName (Get-Culture).DateTimeFormat.GetAbbreviatedMonthName($currentMonth) -AutoSize -Append -TableName "Expenses" -InputObject $updatedBudgetData
-        Write-Host "Updated expenses in $((Get-Culture).DateTimeFormat.GetAbbreviatedMonthName($currentMonth))!"
+    if ($updatedoldBudgetData.Count -gt 0) {
+        # Export-Excel -Path $budgetPath -WorkSheetName (Get-Culture).DateTimeFormat.GetAbbreviatedMonthName($currentMonth) -AutoSize -Append -TableName "Expenses" -InputObject $updatedoldBudgetData
+        $updatedoldBudgetData | Export-Excel -Path $outputPath
+        Write-Host "Done."
     } else {
         Write-Host "No new expenses to update."
     }
