@@ -1,8 +1,8 @@
 # Paths to input and output files
 $oldBudgetDataPath = "C:\PersonalMyCode\UpdateBudget\oldBudgetData.csv"
 $accountHistoryPaths = @(
-    "C:\Users\jfluckiger\Downloads\AccountHistory.csv",
-    "C:\Users\jfluckiger\Downloads\AccountHistory (1).csv"
+    "C:\Users\james\Downloads\AccountHistory.csv",
+    "C:\Users\james\Downloads\AccountHistory (1).csv"
 )
 $outputPath = "C:\PersonalMyCode\UpdateBudget\output.csv"
 
@@ -41,9 +41,10 @@ foreach ($accountHistoryPath in $accountHistoryPaths) {
 
     #HEY FUTURE JAMES I THINK THESE NEXT 4 LINES ARE BORKED.    
     # Filter out duplicates and write to the output file
-    $uniqueExpenses = $filteredAccountHistory | Where-Object {
-        $entry = $_
-        -not ($oldBudgetData | Where-Object { $_.date -eq $entry."Post Date" -and $_.amount -eq [decimal]$entry.Debit })
-    }
-    $uniqueExpenses | Export-Csv $outputPath -Append -NoTypeInformation
+    # $uniqueExpenses = $filteredAccountHistory | Where-Object {
+    #     $entry = $_
+    #     -not ($oldBudgetData | Where-Object { $_.date -eq $entry."Post Date" -and $_.amount -eq [decimal]$entry.Debit })
+    # }
+    $filteredAccountHistory | Export-Csv $outputPath -Append -NoTypeInformation
+    # $uniqueExpenses | Export-Csv $outputPath -Append -NoTypeInformation
 }
