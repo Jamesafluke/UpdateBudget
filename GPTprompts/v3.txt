@@ -1,37 +1,34 @@
 Write a program in PowerShell. The goal is to help me update my budget by reading expenses from csv files, ignoring duplicates, and populating my budget spreadsheet.
 
-2023Budget.xlsx is my budget spreadsheet. It has 12 tabs for the 12 months (tab names are Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec). Each of those months has rows and columns of expenses in it (columns s-w starting on row 8) where the month's expenses are listed. 
+C:\PersonalMyCode\UpdateBudget\oldBudgetData.csv is the existing expenses that have been recorded.
+C:\PersonalMyCode\UpdateBudget\bankData.csv is my csv export from my bank account. 
+C:\PersonalMyCode\UpdateBudget\output.csv is where the data will be exported.
 
-rewards.csv is my csv export from my bank account. 
+Each time I run the PowerShell script, compare each expense from bankData.csv to the existing list of expenses in oldBudgetData.csv. If the bankData.csv Post Data and Debit columns match the Date and Amount columns of oldBudgetData.csv respectively consider it a duplicate and don't add it. If it's not a duplicate, it should be added to output.csv.
 
-result.csv is where the data will be exported.
+For example, when I run it on the following csvs, I should have only the following results in output.csv Since they're the only ones in bankData.csv that aren't in oldBudgetData.csv.
 
-Each time I run the PowerShell script, compare each expense from rewards.csv to the existing list of expenses in 2023Budget.xlsx for only the current month and previous month. If the dollar amount and the date are the same as an existing expense in 2023Budget.xlsx for the given month, consider it a duplicate and don't add it. If it's not a duplicate, append it to the bottom of result.csv.
+4/1/2023,1
+4/5/2023,7
+
+bankData.scv
+Post Date,Debit
+4/1/2023,1
+4/1/2023,2
+4/2/2023,3
+4/2/2023,4
+4/3/2023,5
+4/4/2023,6
+4/5/2023,7
 
 
-The xlsx columns (starting on row 8):
-Column s is the date of the expense. Format is mm/dd/yy.
-Column t is the description.
-Column u should be left blank.
-Column v should be left blank.
-Column w is the dollar amount.
 
-The csv columns:
-Column a can be ignored.
-Column b is the date of the expense. Format is mm/dd/yyyy. Should be used to compare and identify duplicates. If it's not a duplicate should be copied into column s of the xlsx.
-column c should be ignored.
-column d is the description. Should be copied into column t of 2023Budget.xlsx (if the expense isn't a duplicate).
-Column e is the dollar amount. Should be used to compare and identify duplicates. Should be copied into column w of 2023Budget.xlsx (if the expense isn't a duplicate).
-Column f is credit. If this column has something in it, discard the expense.
-Columns g, h, and i should be ignored.
+oldBudgetData.csv
+date,amount
+4/1/2023,2
+4/2/2023,3
+4/2/2023,4
+4/3/2023,5
+4/4/2023,6
 
-The format for result.csv:
-Column a is the date of the expense. Format is mm/dd/yy. 
-Column b is the description.
-Column c should be left blank.
-Column d should be left blank.
-Column e is the dollar amount.
 
-2023Budget.xlsx is located at C:\Users\james\OneDrive\Budget\2023Budget.xlsx
-rewards.csv is located at C:\Users\james\Downloads\rewards.csv
-result.csv should be created at C:\Users\james\Downloads\result.csv
