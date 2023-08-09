@@ -1,8 +1,8 @@
 # Paths to input and output files
 $oldBudgetDataPath = "C:\PersonalMyCode\UpdateBudget\oldBudgetData.csv"
 $accountHistoryPaths = @(
-    "C:\Users\james\Downloads\AccountHistory.csv",
-    "C:\Users\james\Downloads\AccountHistory (1).csv"
+    "C:\Users\jfluckiger\Downloads\AccountHistory.csv",
+    "C:\Users\jfluckiger\Downloads\AccountHistory (1).csv"
 )
 $outputPath = "C:\PersonalMyCode\UpdateBudget\output.csv"
 
@@ -29,15 +29,17 @@ foreach ($accountHistoryPath in $accountHistoryPaths) {
         $entry = $_
         $postDate = Get-Date $entry."Post Date"
 
+
         # Check if the year is 2023 and the month matches
-        if ($postDate.Year -ne $selectedYear -or $postDate.Month -ne $selectedMonth) {
-            Write-Host "postDate.Year is $postDate.Year so returning false" 
+        # if ([int]$postDate.Year -ne $selectedYear -or [int]$postDate.Month -ne $selectedMonth) {
+        if ([int]$postDate.Year -ne $selectedYear) {
             return $false
         }
         
         return $true
     }
-    
+
+    #HEY FUTURE JAMES I THINK THESE NEXT 4 LINES ARE BORKED.    
     # Filter out duplicates and write to the output file
     $uniqueExpenses = $filteredAccountHistory | Where-Object {
         $entry = $_
