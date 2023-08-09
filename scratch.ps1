@@ -1,20 +1,33 @@
-$year = "2023"
-$selectedMonth = "4"
+function Compare-AccountHistory {
+    param (
+        [string]$accountHistoryPath,
+        [string]$budgetDataPath
+    )
 
-$selectedMonth = [int]$selectedMonth
-$selectedYear = [int]$year
+    # Load CSV files into variables
+    $accountHistory = Import-Csv $accountHistoryPath
+    $budgetData = Import-Csv $budgetDataPath
 
-$postDate = Get-Date "4/7/2023"
+    # Create an empty array to store non-duplicate entries
+    $uniqueExpenses = @()
 
-$intYear = [int]$postDate.Year
+    # Loop through each entry in account history
+    foreach ($entry in $accountHistory) {
+        $postDate = $entry."Post Date"
+        $debit = [decimal]$entry."Debit"
+        
+        # Check if there's a matching entry in budget data
+        $matchingBudgetEntry = $budgetData | Where-Object { $_."Date" -eq $postDate -and $_."Amount" -eq $debit }
+        
+        # If no match found, consider it a non-duplicate
+        if (-not $matchingBudgetEntry) {
+            $uniqueExpenses += $entry
+        }
+    }
 
-if ($intYear -eq $selectedYear) {
-	Write-Host "true!"
+    # Return the non-duplicate entries
+    return $uniqueExpenses
 }
 
-if ([int]$postDate.Year -eq $selectedYear) {
-    Write-Host "true!"
-}
-
-
-
+# Call the function and store the result in a variable
+$filteredunique$uniqueExpenses = Compare-AccountHistory -accountHistoryPath "filteredAccountHistory.csv" -budgetDataPath "oldBudgetData.csv"
