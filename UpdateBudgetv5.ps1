@@ -52,6 +52,9 @@ function InputAccountHistory([String]$accountHistoryPath) {
         }
         return $true
     }
+
+    $count = $filteredAccountHistory.Count
+    Write-Host "$accountHistoryPath has $count items."
     return $filteredAccountHistory
 }
 
@@ -130,7 +133,24 @@ function DeDup($thisMonthExpenses){
                 $description = "Dominion Energy"
                 $category = "Dominion"
             }
-            
+            if ($entry.Description -eq "Credit Card Payment") {
+                $amount = ""
+            }            
+            if ($entry.Description -eq "Fluckiger") {
+                $amount = ""
+            }
+            if ($entry.Description -eq "Costa Vida") {
+                $description = ""
+                $category = "Eating Out/Fun"
+            }
+            if ($entry.Description -eq "Xfinity Mobile") {
+                $description = "Phones"
+                $category = "Phones"
+            }
+            if ($entry.Description -eq "YouTube Premium") {
+                $description = "YouTube Premium"
+                $category = "YouTube Premium"
+            }
 
 
             $newExpense = [PSCustomObject]@{
@@ -158,10 +178,17 @@ function Export($uniqueExpenses){
 
 $thisMonthExpenses = InputAccountHistory($accountHistoryPaths[0])
 $thisMonthExpenses += InputAccountHistory($accountHistoryPaths[1])
-# $thisMonthExpenses | Export-Csv "C:\PersonalMyCode\UpdateBudget\thisMonthExpenses.csv"
+$count = $thisMonthExpenses.Count
+Write-Host "Importing a total of $count items."
 
 $uniqueExpenses = DeDup($thisMonthExpenses)
-# $uniqueExpenses | Export-Csv "C:\PersonalMyCode\UpdateBudget\uniqueexpenses.csv"
+
+$count = $oldBudgetDataPath.Count
+Write-Host "Existing budget has $count items."
+
+$count = $uniqueExpenses.Count
+Write-Host "Grand total of $count items."
+
 
 Export($uniqueExpenses)
 
