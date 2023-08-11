@@ -1,4 +1,11 @@
 Account Number,Post Date,Check,Description,Debit,Credit,Status,Balance,Classification
+"313235393200",8/9/2023,,"Microsoft",.38,,Posted,561.48,"Entertainment"
+"313235393200",8/9/2023,,"Prime Video",10.71,,Posted,561.10,"Television"
+"313235393200",8/9/2023,,"Walmart",39.37,,Posted,550.39,"Shopping"
+"313235393200",8/9/2023,,"Walmart",74.92,,Posted,511.02,"Shopping"
+"313235393200",8/9/2023,,"Audible",16.03,,Posted,436.10,"Books"
+"313235393200",8/8/2023,,"Walmart",58.61,,Posted,420.07,"Shopping"
+"313235393200",8/8/2023,,"Walmart",10.71,,Posted,361.46,"Shopping"
 "313235393200",8/6/2023,,"Walmart",,.45,Posted,350.75,"Shopping"
 "313235393200",8/6/2023,,"Walmart",20.27,,Posted,351.20,"Shopping"
 "313235393200",8/6/2023,,"Utah State Parks",15.00,,Posted,330.93,"Vacation"

@@ -1,8 +1,6 @@
 
 # Stuff I need to add:
-#Handle Credit and Debit
-#Handle Method
-
+#Deduplicate definitely does NOT work
 
 # Paths to input and output files
 $oldBudgetDataPath = "C:\PersonalMyCode\UpdateBudget\oldBudgetData.csv"
@@ -118,8 +116,8 @@ function DeDup($thisMonthExpenses){
                 $category = "Investment"
             }
             if ($entry.Description -eq "Allstate") {
-                $description = "Insurance"
-                $category = "Insurance"
+                $description = "Car Insurance"
+                $category = "Car Insurance"
             }
             if ($entry.Description -eq "Fast Gas Convenience Store") {
                 $description = ""
@@ -154,6 +152,15 @@ function DeDup($thisMonthExpenses){
                 $description = "Gasoline"
                 $category = "Gasoline"
             }
+            if ($entry.Description -eq "Comcast") {
+                $description = "Internet"
+                $category = "Internet"
+            }
+            if ($entry.Description -eq "Chevron") {
+                $description = "Gasoline"
+                $category = "Gasoline"
+            }
+
             
 
             $newExpense = [PSCustomObject]@{
