@@ -21,6 +21,9 @@ $oldBudgetData = Import-Csv $oldBudgetDataPath
 # Ask user to choose a month
 $selectedMonth = Read-Host "Enter a number between 1 and 12 for the desired month"
 # $selectedMonth = "4"
+$months=@("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+$monthName = $months[$selectedMonth -1]
+Write-Host "Selected: $monthName"
 $year = "2023"
 
 # Convert the selected month to an integer
@@ -32,11 +35,11 @@ $selectedYear = [int]$year
 # Iterate through account history files
 function InputAccountHistory([String]$accountHistoryPath) {
 
-    Write-Host "`n`nRunning for $accountHistoryPath"
-
     # Read the account history data
     $accountHistoryData = Import-Csv $accountHistoryPath
-
+    $count = $accountHistoryData.Count
+    Write-Host 
+    Write-Host "Inside the function $Count."
     
     # Filter account history data by selected month and specific condition
     $filteredAccountHistory = $accountHistoryData | Where-Object {
@@ -53,8 +56,6 @@ function InputAccountHistory([String]$accountHistoryPath) {
         return $true
     }
 
-    $count = $filteredAccountHistory.Count
-    Write-Host "$accountHistoryPath has $count items."
     return $filteredAccountHistory
 }
 
@@ -63,8 +64,6 @@ function DeDup($thisMonthExpenses){
     $uniqueExpenses = @()
 
     foreach ($entry in $thisMonthExpenses) {
-
-        
 
         $postDate = $entry."Post Date"
         $debit = [decimal]$entry."Debit"
@@ -151,7 +150,11 @@ function DeDup($thisMonthExpenses){
                 $description = "YouTube Premium"
                 $category = "YouTube Premium"
             }
-
+            if ($entry.Description -eq "Costco Gas") {
+                $description = "Gasoline"
+                $category = "Gasoline"
+            }
+            
 
             $newExpense = [PSCustomObject]@{
                 Date = $entry."Post Date"
@@ -174,20 +177,18 @@ function Export($uniqueExpenses){
 }
 
 
-
-
 $thisMonthExpenses = InputAccountHistory($accountHistoryPaths[0])
 $thisMonthExpenses += InputAccountHistory($accountHistoryPaths[1])
 $count = $thisMonthExpenses.Count
-Write-Host "Importing a total of $count items."
+Write-Host "Target month has $count items."
 
 $uniqueExpenses = DeDup($thisMonthExpenses)
 
-$count = $oldBudgetDataPath.Count
-Write-Host "Existing budget has $count items."
+$count = $oldBudgetData.Count
 
 $count = $uniqueExpenses.Count
-Write-Host "Grand total of $count items."
+Write-Host "Exporting $count items."
+
 
 
 Export($uniqueExpenses)
