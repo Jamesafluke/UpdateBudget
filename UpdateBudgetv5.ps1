@@ -1,6 +1,4 @@
 
-# Stuff I need to add:
-#Deduplicate definitely does NOT work
 
 # Paths to input and output files
 $oldBudgetDataPath = "C:\PersonalMyCode\UpdateBudget\oldBudgetData.csv"
@@ -13,12 +11,9 @@ $outputPath = "C:\PersonalMyCode\UpdateBudget\output.csv"
 $rewardsAccountNumber = "313235393200"
 $checkingAccountNumber = "750501095729"
 
-# Read the old budget data
-$oldBudgetData = Import-Csv $oldBudgetDataPath
-
 # Ask user to choose a month
-$selectedMonth = Read-Host "Enter a number between 1 and 12 for the desired month"
-# $selectedMonth = "4"
+# $selectedMonth = Read-Host "Enter a number between 1 and 12 for the desired month"
+$selectedMonth = "7"
 $months=@("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
 $monthName = $months[$selectedMonth -1]
 Write-Host "Selected: $monthName"
@@ -26,54 +21,67 @@ $year = "2023"
 
 # Convert the selected month to an integer
 $selectedMonth = [int]$selectedMonth
-
-#Year
 $selectedYear = [int]$year
 
-# Iterate through account history files
-function InputAccountHistory([String]$accountHistoryPath) {
 
-    # Read the account history data
-    $accountHistoryData = Import-Csv $accountHistoryPath
-    $count = $accountHistoryData.Count
-    Write-Host 
-    Write-Host "Inside the function $Count."
+# Iterate through account history files
+function InputAccountHistory() {
+    $combinedCsv = ""
+    $accountHistory0 = Import-Csv $accountHistoryPaths[0]
+    $accountHistory1 = Import-Csv $accountHistoryPaths[1]
+    $combinedCsv = $accountHistory0 + $accountHistory1
+    # $combinedCsv = @($accountHistory0, $accountHistory1)
+
+    Write-Host "Both csvs combined have $($combinedCsv.Count) items total."
+    $filteredAccountHistory = ""
     
     # Filter account history data by selected month and specific condition
-    $filteredAccountHistory = $accountHistoryData | Where-Object {
+    $filteredAccountHistory = $combinedCsv | Where-Object {
         $entry = $_
         $postDate = Get-Date $entry."Post Date"
         
         # Check if the year is 2023 and the month matches
         if ([int]$postDate.Year -ne $selectedYear) {
+            # Write-Host "Year doesn't match $selectedYear"
             return $false
         }   
         if ([int]$postDate.Month -ne $selectedMonth){
+            # Write-Host "Month doesn't match $selectedMonth"
             return $false
         }
         return $true
     }
-
+    Write-Host "Selected month has $($filteredAccountHistory.Count) items."
     return $filteredAccountHistory
 }
 
-function DeDup($thisMonthExpenses){
 
+
+function Deduplicate($thisMonthExpenses){
+
+    #Remove the dollar sign and whitespace
+    $oldBudgetData = Import-Csv $oldBudgetDataPath
+    foreach ($entry in $oldBudgetData){
+        $entry.Amount = $entry.Amount.Replace('$', '')
+        $entry.Amount = $entry.Amount.Replace(' ', '')
+    }
+
+    Write-Host "Existing budget data has $($oldBudgetData.Count) items."
     $uniqueExpenses = @()
 
     foreach ($entry in $thisMonthExpenses) {
-
         $postDate = $entry."Post Date"
         $debit = [decimal]$entry."Debit"
         $credit = [decimal]$entry."Credit"
         
-        # Check if there's a matching entry in budget data
-        $matchingBudgetEntry = $oldBudgetData | Where-Object { $_."Date" -eq $postDate -and $_."Amount" -eq $debit }
         
+        # Check if there's a matching entry in old budget data
+        $matchingBudgetEntry = $oldBudgetData | Where-Object { $_.Date -eq $postDate -and [decimal]$_.Amount -eq $debit}
+
         # If no match found, consider it a non-duplicate
         if (-not $matchingBudgetEntry) {
             
-            #Determine method
+            #Determine method.
             $method = $null
             if ($entry."Account Number" -eq $rewardsAccountNumber){
                 $method = "Rewards"
@@ -161,8 +169,6 @@ function DeDup($thisMonthExpenses){
                 $category = "Gasoline"
             }
 
-            
-
             $newExpense = [PSCustomObject]@{
                 Date = $entry."Post Date"
                 Item = $entry.Description
@@ -184,21 +190,20 @@ function Export($uniqueExpenses){
 }
 
 
-$thisMonthExpenses = InputAccountHistory($accountHistoryPaths[0])
-$thisMonthExpenses += InputAccountHistory($accountHistoryPaths[1])
-$count = $thisMonthExpenses.Count
-Write-Host "Target month has $count items."
+Write-Host "Starting!"
 
-$uniqueExpenses = DeDup($thisMonthExpenses)
+$thisMonthExpenses = InputAccountHistory
 
-$count = $oldBudgetData.Count
+if($thisMonthExpenses -ne $null){
+    $uniqueExpenses = Deduplicate($thisMonthExpenses)
+}
 
-$count = $uniqueExpenses.Count
-Write-Host "Exporting $count items."
-
-
-
-Export($uniqueExpenses)
+if($uniqueExpenses -ne $null){
+    Write-Host "Exporting $($uniqueExpenses.Count) items."
+    Export($uniqueExpenses)
+}else{
+    Write-Host "No expenses to add."
+}
 
 
 
