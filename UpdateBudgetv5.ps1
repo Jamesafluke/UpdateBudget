@@ -1,6 +1,8 @@
-
+Import-Module ImportExcel
 
 # Paths to input and output files
+
+$budgetPath = "C:\Users\james\OneDrive\Budget\2023Budget.xlsx"
 $oldBudgetDataPath = "C:\PersonalMyCode\UpdateBudget\oldBudgetData.csv"
 $accountHistoryPaths = @(
     "C:\PersonalMyCode\UpdateBudget\AccountHistory.csv",
@@ -22,6 +24,33 @@ $year = "2023"
 # Convert the selected month to an integer
 $selectedMonth = [int]$selectedMonth
 $selectedYear = [int]$year
+
+
+function InputExistingBudgetData(){
+    $excelData = Import-Excel $budgetPath -WorksheetName "Jul" -NoHeader -ImportColumns @(19,20,21,22,23,24) -startrow 8 -endrow 200
+
+    #Remove blank items.
+    $refinedData = ""
+    foreach($item in $excelData){
+        if($item -ne $null ){
+
+            $newExpense = [PSCustomObject]@{
+                Date = [string]($item.P1 | Get-Date -Format "MM/dd/yyyy")
+                Item = $item.P2
+                Description = $item.P3
+                Method = $item.P4
+                Category = $item.P5
+                Amount = [decimal]$item.P6
+            }
+        $refinedData += $newExpense
+        }
+    }
+}
+
+#Convert date to date
+#Convert double to decimal
+
+
 
 
 # Iterate through account history files
@@ -54,8 +83,6 @@ function InputAccountHistory() {
     Write-Host "Selected month has $($filteredAccountHistory.Count) items."
     return $filteredAccountHistory
 }
-
-
 
 function Deduplicate($thisMonthExpenses){
 
@@ -191,6 +218,8 @@ function Export($uniqueExpenses){
 
 
 Write-Host "Starting!"
+
+InputExistingBudgetData
 
 $thisMonthExpenses = InputAccountHistory
 
