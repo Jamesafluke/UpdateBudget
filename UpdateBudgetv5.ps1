@@ -15,7 +15,7 @@ $checkingAccountNumber = "750501095729"
 
 # Ask user to choose a month
 # $selectedMonth = Read-Host "Enter a number between 1 and 12 for the desired month"
-$selectedMonth = "7"
+$selectedMonth = "8"
 $months=@("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
 $monthName = $months[$selectedMonth -1]
 Write-Host "Selected: $monthName"
@@ -84,12 +84,17 @@ function InputAccountHistory() {
 
 function Deduplicate($thisMonthExpenses){
 
-    #Remove the dollar sign and whitespace
+    #Remove the dollar sign and whitespace and change parenthesis to - sign.
     $oldBudgetData = Import-Csv $oldBudgetDataPath
     foreach ($entry in $oldBudgetData){
         $entry.Amount = $entry.Amount.Replace('$', '')
         $entry.Amount = $entry.Amount.Replace(' ', '')
+        if($entry.Amount[0] -match "^\("){
+            
+        }
     }
+
+    
 
     Write-Host "Existing budget data has $($oldBudgetData.Count) items."
     $uniqueExpenses = @()
@@ -217,15 +222,15 @@ function Export($uniqueExpenses){
 
 Write-Host "Starting!"
 
-InputExistingBudgetData
+# InputExistingBudgetData
 
 $thisMonthExpenses = InputAccountHistory
 
-if($thisMonthExpenses -ne $null){
+if($null -ne $thisMonthExpenses){
     $uniqueExpenses = Deduplicate($thisMonthExpenses)
 }
 
-if($uniqueExpenses -ne $null){
+if($null -ne $uniqueExpenses){
     Write-Host "Exporting $($uniqueExpenses.Count) items."
     Export($uniqueExpenses)
 }else{
