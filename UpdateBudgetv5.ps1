@@ -32,29 +32,23 @@ function InputExistingBudgetData(){
     #Remove blank items.
     $refinedData = ""
     foreach($item in $excelData){
-        if($item -ne $null ){
+        if($null -ne $item.P1){
 
-            $newDate = $item.P1
-            Write-Host $item.P1
-
-            $newExpense = [PSCustomObject]@{
-                # Date = [string](Get-Date $newDate -Format "MM/dd/yyyy")
-                Date = $newDate
+            $nonBlankExpense = [PSCustomObject]@{
+                Date = [string](Get-Date $item.P1 -Format "MM/dd/yyyy")
                 Item = $item.P2
                 Description = $item.P3
                 Method = $item.P4
                 Category = $item.P5
                 Amount = [decimal]$item.P6
             }
-        $refinedData += $newExpense
+        $refinedData += $nonBlankExpense
         }
     }
 }
 
 #Convert date to date
 #Convert double to decimal
-
-
 
 
 # Iterate through account history files
