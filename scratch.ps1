@@ -1,3 +1,6 @@
-$testDate = Get-Date -Format "yyyy"
+$excelData = Import-Excel $budgetPath -WorksheetName "Jul" -NoHeader -ImportColumns @(19,20,21,22,23,24) -startrow 8 -endrow 200
 
-# Date = [string]($item.P1 | Get-Date -Format "MM/dd/yyyy")
+$testDate = [string](Get-Date $excelData[0].P1 -Format "MM/dd/yyyy")
+
+$testDate.GetType()
+Write-Host $testDate
