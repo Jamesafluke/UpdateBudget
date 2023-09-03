@@ -1,21 +1,34 @@
 Import-Module ImportExcel
+Install-Module Recycle
 
 # Paths to input and output files
 
 $budgetPath = "C:\Users\james\OneDrive\Budget\2023Budget.xlsx"
 $oldBudgetDataPath = "C:\PersonalMyCode\UpdateBudget\oldBudgetData.csv"
-$accountHistoryPaths = @(
-    "C:\PersonalMyCode\UpdateBudget\AccountHistory.csv",
-    "C:\PersonalMyCode\UpdateBudget\AccountHistory (1).csv"
-)
 $outputPath = "C:\PersonalMyCode\UpdateBudget\output.csv"
+$testMode = $true
+
+if($testMode){
+    Write-Host "Test mode on." -ForegroundColor Yellow
+    $accountHistoryPaths = @(
+        "C:\Users\james\Downloads\AccountHistory.csv",
+        "C:\Users\james\Downloads\AccountHistory (1).csv"
+        )
+    $selectedMonth = "8"
+}else{
+    Write-Host "Test mode off."
+    $accountHistoryPaths = @(
+        "C:\PersonalMyCode\UpdateBudget\AccountHistory.csv",
+        "C:\PersonalMyCode\UpdateBudget\AccountHistory (1).csv"
+    )
+    $selectedMonth = Read-Host "Enter a number between 1 and 12 for the desired month"
+}
+        
 
 $rewardsAccountNumber = "313235393200"
 $checkingAccountNumber = "750501095729"
+$pendingItems =""
 
-# Ask user to choose a month
-# $selectedMonth = Read-Host "Enter a number between 1 and 12 for the desired month"
-$selectedMonth = "8"
 $months=@("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
 $monthName = $months[$selectedMonth -1]
 Write-Host "Selected: $monthName"
@@ -65,20 +78,30 @@ function InputAccountHistory() {
     # Filter account history data by selected month and specific condition
     $filteredAccountHistory = $combinedCsv | Where-Object {
         $entry = $_
-        $postDate = Get-Date $entry."Post Date"
-        
-        # Check if the year is 2023 and the month matches
-        if ([int]$postDate.Year -ne $selectedYear) {
-            # Write-Host "Year doesn't match $selectedYear"
-            return $false
-        }   
-        if ([int]$postDate.Month -ne $selectedMonth){
-            # Write-Host "Month doesn't match $selectedMonth"
-            return $false
+        if($entry.Status -eq "Pending"){
+            Write-Host "Found a pending $entry"
+            $pendingItems += $entry
+        }else{
+
+            $postDate = Get-Date $entry."Post Date"
+            
+            # Check if the year is 2023 and the month matches
+            if ([int]$postDate.Year -ne $selectedYear) {
+                # Write-Host "Year doesn't match $selectedYear"
+                return $false
+            }   
+            if ([int]$postDate.Month -ne $selectedMonth){
+                # Write-Host "Month doesn't match $selectedMonth"
+                return $false
+            }
+            return $true
         }
-        return $true
     }
     Write-Host "Selected month has $($filteredAccountHistory.Count) items."
+    # Write-Host $filteredAccountHistory
+    foreach($item in $filteredAccountHistory){
+        Write-Host $item
+    }
     return $filteredAccountHistory
 }
 
@@ -89,8 +112,12 @@ function Deduplicate($thisMonthExpenses){
     foreach ($entry in $oldBudgetData){
         $entry.Amount = $entry.Amount.Replace('$', '')
         $entry.Amount = $entry.Amount.Replace(' ', '')
+
         if($entry.Amount[0] -match "^\("){
-            
+            # $entry.Amount = $entry.Amount -replace "^\(", "-"
+            $entry.Amount = "-" + $entry.Amount
+            $entry.Amount = $entry.Amount.Remove(1,1)
+            $entry.Amount = $entry.Amount.Substring(0, $entry.Amount.Length - 1)
         }
     }
 
@@ -235,4 +262,13 @@ if($null -ne $uniqueExpenses){
     Export($uniqueExpenses)
 }else{
     Write-Host "No expenses to add."
+}
+
+if(-not $testMode){
+    $userInput = Read-Host "Delete AccountHistory files? y/n"
+    if($userInput -eq 'y'){
+        Write-Host "Deleting $accountHistoryPaths[0] and $accountHistoryPaths[1]"
+        Remove-ItemSafely $accountHistoryPaths[0]
+        Remove-ItemSafely $accountHistoryPaths[1]
+    }
 }
