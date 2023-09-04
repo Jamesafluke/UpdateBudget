@@ -2,11 +2,10 @@ Import-Module ImportExcel
 # Install-Module Recycle
 
 
-$testMode = $true
+$testMode = $false
 # Paths to input and output files
-# $excelPath = "C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE"
-# $budgetPath = "C:\Users\james\OneDrive\Budget\2023Budget.xlsx"
-$budgetPath = "C:\Users\jfluckiger\OneDrive\Budget\2023Budget.xlsx"
+$budgetxlsxPath = "C:\Users\james\OneDrive\Budget\2023Budget.xlsx"
+# $budgetxlsxPath = "C:\Users\jfluckiger\OneDrive\Budget\2023Budget.xlsx"
 $budgetcsvPath = "C:\PersonalMyCode\UpdateBudget\oldBudgetData.csv"
 $outputPath = "C:\PersonalMyCode\UpdateBudget\output.csv"
 $rewardsAccountNumber = "313235393200"
@@ -69,7 +68,11 @@ function ImportBudgetFromCsv(){
 
 function ImportBudgetFromXlsx(){
     Write-Host "Importing budget data from 2023Budget.xlsx"
-    $excelData = Import-Excel $budgetPath -WorksheetName "Jul" -NoHeader -ImportColumns @(19,20,21,22,23,24) -startrow 8 -endrow 200
+    try{
+        $excelData = Import-Excel $budgetxlsxPath -WorksheetName $abbMonthName -NoHeader -ImportColumns @(19,20,21,22,23,24) -startrow 8 -endrow 200
+    }catch{
+        Write-Host "Importing Excel data failed. Make sure it's closed."
+    }
 
     #Remove blank items.
     $refinedData = ""
