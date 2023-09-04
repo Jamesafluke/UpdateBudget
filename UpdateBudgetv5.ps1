@@ -72,6 +72,7 @@ function ImportBudgetFromXlsx(){
         $excelData = Import-Excel $budgetxlsxPath -WorksheetName $abbMonthName -NoHeader -ImportColumns @(19,20,21,22,23,24) -startrow 8 -endrow 200
     }catch{
         Write-Host "Importing Excel data failed. Make sure it's closed."
+        exit
     }
 
     #Remove blank items.
@@ -88,6 +89,9 @@ function ImportBudgetFromXlsx(){
             }
         $refinedData += $nonBlankExpense
         }
+    }
+    foreach($item in $refinedData){
+        Write-Host $item
     }
 }
 
