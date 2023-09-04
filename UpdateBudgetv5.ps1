@@ -2,41 +2,74 @@ Import-Module ImportExcel
 Install-Module Recycle
 
 # Paths to input and output files
-
+# $excelPath = "C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE"
 $budgetPath = "C:\Users\james\OneDrive\Budget\2023Budget.xlsx"
-$oldBudgetDataPath = "C:\PersonalMyCode\UpdateBudget\oldBudgetData.csv"
+$budgetcsvPath = "C:\PersonalMyCode\UpdateBudget\oldBudgetData.csv"
 $outputPath = "C:\PersonalMyCode\UpdateBudget\output.csv"
-$testMode = $true
-
-if($testMode){
-    Write-Host "Test mode on." -ForegroundColor Yellow
-    $accountHistoryPaths = @(
-        "C:\Users\james\Downloads\AccountHistory.csv",
-        "C:\Users\james\Downloads\AccountHistory (1).csv"
-        )
-    $selectedMonth = "8"
-}else{
-    Write-Host "Test mode off."
-    $accountHistoryPaths = @(
-        "C:\PersonalMyCode\UpdateBudget\AccountHistory.csv",
-        "C:\PersonalMyCode\UpdateBudget\AccountHistory (1).csv"
-    )
-    $selectedMonth = Read-Host "Enter a number between 1 and 12 for the desired month"
-}
-        
-
 $rewardsAccountNumber = "313235393200"
 $checkingAccountNumber = "750501095729"
 $pendingItems =""
+$selectedYear = ""
+$selectedMonth = ""
+$abbMonthName = ""
+$abbMonths=@("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+$fullMonths=@("January","February","March","April","May","June","July","August","September","October","November","December")
+$accountHistoryPaths = ""
 
-$months=@("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
-$monthName = $months[$selectedMonth -1]
-Write-Host "Selected: $monthName"
-$year = "2023"
+
+#Test mode
+$testMode = $false
+if($testMode){
+    Write-Host "Test mode!" -ForegroundColor Yellow
+}else{
+    Write-Host "Test mode off."
+}
+
+#Account history paths
+function AccountHistoryPaths{
+    if($testMode){
+        $accountHistoryPaths = @(
+            "C:\PersonalMyCode\UpdateBudget\AccountHistory.csv",
+            "C:\PersonalMyCode\UpdateBudget\AccountHistory (1).csv"
+        )
+    }else{
+        $accountHistoryPaths = @(
+            "C:\Users\james\Downloads\AccountHistory.csv",
+            "C:\Users\james\Downloads\AccountHistory (1).csv"
+            )
+        }
+    }
+
+#Select month and year
+
+
+if($testMode){
+    $selectedMonth = "8"
+    $selectedYear = "2023"
+    $abbMonthName = $abbMonths[$selectedMonth -1]
+    $fullMonthName = $fullMonths[$selectedMonth -1]
+    Write-Host "Hard coded test month and year are " -NoNewline; Write-Host "$fullMonthName $selectedYear" -ForegroundColor Green
+}else{
+    $userInput = Read-Host "Use current month? y/n"
+    if($userInput -eq 'y'){
+        $selectedMonth = Get-Date -Format "MM"
+        $abbMonthName = $abbMonths[$selectedMonth -1]
+        $fullMonthName = $fullMonths[$selectedMonth -1]
+        Write-Host "Current month is " -NoNewline; Write-Host "$fullMonthName" -ForegroundColor Green
+    }else{
+        $selectedMonth = Read-Host "Enter a number between 1 and 12 for the desired month"
+        # $selectedYear = Read-Host "Enter the year"
+        $selectedYear = "2023"
+        $abbMonthName = $abbMonths[$selectedMonth -1]
+        $fullMonthName = $fullMonths[$selectedMonth -1]
+        Write-Host "Selected month is " -NoNewline; Write-Host "$fullMonthName" -ForegroundColor Green
+    }
+}
+
 
 # Convert the selected month to an integer
 $selectedMonth = [int]$selectedMonth
-$selectedYear = [int]$year
+$selectedYear = [int]$selectedYear
 
 
 function InputExistingBudgetData(){
@@ -60,12 +93,8 @@ function InputExistingBudgetData(){
     }
 }
 
-#Convert date to date
-#Convert double to decimal
-
-
 # Iterate through account history files
-function InputAccountHistory() {
+function ImportFromCsv() {
     $combinedCsv = ""
     $accountHistory0 = Import-Csv $accountHistoryPaths[0]
     $accountHistory1 = Import-Csv $accountHistoryPaths[1]
@@ -99,16 +128,16 @@ function InputAccountHistory() {
     }
     Write-Host "Selected month has $($filteredAccountHistory.Count) items."
     # Write-Host $filteredAccountHistory
-    foreach($item in $filteredAccountHistory){
-        Write-Host $item
-    }
+    # foreach($item in $filteredAccountHistory){
+    #     Write-Host $item
+    # }
     return $filteredAccountHistory
 }
 
 function Deduplicate($thisMonthExpenses){
 
     #Remove the dollar sign and whitespace and change parenthesis to - sign.
-    $oldBudgetData = Import-Csv $oldBudgetDataPath
+    $oldBudgetData = Import-Csv $budgetcsvPath
     foreach ($entry in $oldBudgetData){
         $entry.Amount = $entry.Amount.Replace('$', '')
         $entry.Amount = $entry.Amount.Replace(' ', '')
@@ -130,14 +159,22 @@ function Deduplicate($thisMonthExpenses){
         $postDate = $entry."Post Date"
         $debit = [decimal]$entry."Debit"
         $credit = [decimal]$entry."Credit"
-        
+
+        #Determine debit or credit.
+        $amount = $null
+        if ($debit -ne ""){
+            $amount = $debit
+        }else{
+            $amount = $credit * -1
+        }
         
         # Check if there's a matching entry in old budget data
-        $matchingBudgetEntry = $oldBudgetData | Where-Object { $_.Date -eq $postDate -and [decimal]$_.Amount -eq $debit}
+        $matchingBudgetEntry = $oldBudgetData | Where-Object { $_.Date -eq $postDate -and [decimal]$_.Amount -eq $amount}
 
         # If no match found, consider it a non-duplicate
         if (-not $matchingBudgetEntry) {
             
+
             #Determine method.
             $method = $null
             if ($entry."Account Number" -eq $rewardsAccountNumber){
@@ -145,14 +182,7 @@ function Deduplicate($thisMonthExpenses){
             }elseif ($entry."Account Number" -eq $checkingAccountNumber) {
                 $method = "Checking"
             }
-
-            #Determine debit or credit.
-            $amount = $null
-            if ($debit -ne ""){
-                $amount = $debit
-            }else{
-                $amount = $credit * -1
-            }
+            
 
             #Arbitrary exceptions.
             $description = ""
@@ -249,9 +279,16 @@ function Export($uniqueExpenses){
 
 Write-Host "Starting!"
 
+
+#Import existing data
+if($testMode){
+    $userInput = Read-Host "Import from local csv? y/n"
+    if($userInput){
+    $thisMonthExpenses = ImportFromCsv
+    }
+}else
 # InputExistingBudgetData
 
-$thisMonthExpenses = InputAccountHistory
 
 if($null -ne $thisMonthExpenses){
     $uniqueExpenses = Deduplicate($thisMonthExpenses)
@@ -272,3 +309,5 @@ if(-not $testMode){
         Remove-ItemSafely $accountHistoryPaths[1]
     }
 }
+
+Invoke-Item $outputPath
