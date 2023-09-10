@@ -1,11 +1,3 @@
-$dog = "Yahoo"
-
-function CoolFunction(){
-    
-    # Write-Host $script:dog
-    $script:dog = "Doink"
-}
-
-CoolFunction
-
-Write-Host $dog
+$doink = "c:\test\"
+$output = $doink + "test.txt"
+Write-Host $output

@@ -8,13 +8,14 @@ $laptop = $true
 if($laptop){
     Write-Host "Laptop" -ForegroundColor Blue
     $script:budgetxlsxPath = "C:\Users\jfluckiger\OneDrive\Budget\2023Budget.xlsx"
+
 }else{
     Write-Host "Desktop" -ForegroundColor Blue
     $script:budgetxlsxPath = "C:\Users\james\OneDrive\Budget\2023Budget.xlsx"
 }
 $budgetcsvPath = "C:\PersonalMyCode\UpdateBudget\oldBudgetData.csv"
 $outputPath = "C:\PersonalMyCode\UpdateBudget\output.csv"
-$backupPath = "C:\PersonalMyCode\UpdateBudget\backup.csv"
+$backupPath = "C:\PersonalMyCode\UpdateBudget\BudgetBackup\"
 $rewardsAccountNumber = "313235393200"
 $checkingAccountNumber = "750501095729"
 $pendingItems =""
@@ -25,16 +26,16 @@ $abbMonths=@("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","
 $fullMonths=@("January","February","March","April","May","June","July","August","September","October","November","December")
 $accountHistoryPaths = @()
 $oldBudgetData = ""
-$bankData = ""
+$accountHistory = ""
 
 function AccountHistoryPaths{
-    if($testMode){
+    if($script:testMode){
         $script:accountHistoryPaths = @(
             "C:\PersonalMyCode\UpdateBudget\AccountHistory.csv",
             "C:\PersonalMyCode\UpdateBudget\AccountHistory (1).csv"
         )
     }else{
-        if($laptop){
+        if($script:laptop){
             $script:accountHistoryPaths = @(
                 "C:\Users\jfluckiger\Downloads\AccountHistory.csv",
                 "C:\Users\jfluckiger\Downloads\AccountHistory (1).csv"            
@@ -85,8 +86,8 @@ function ImportBudgetFromCsv(){
 function ImportBudgetFromXlsx(){
     Write-Host "Importing budget data from 2023Budget.xlsx"
     try{
-        Write-Host "$budgetxlsxPath"
-        Write-Host $script:abbMonthName
+        # Write-Host $script:budgetxlsxPath
+        # Write-Host $script:abbMonthName
         $excelData = Import-Excel $script:budgetxlsxPath -WorksheetName $script:abbMonthName -NoHeader -ImportColumns @(19,20,21,22,23,24) -startrow 8 -endrow 200
     }catch{
         Write-Host "Importing Excel data failed. Make sure it's closed."
@@ -108,21 +109,18 @@ function ImportBudgetFromXlsx(){
         $refinedData += $nonBlankExpense
         }
     }
-    foreach($item in $refinedData){
-        Write-Host $item
-    }
+    # Write-Host $refinedData
     return $refinedData
-
 }
 
-function ImportBankData() {
+function ImportAccountHistory() {
     $combinedCsv = ""
-    $accountHistory0 = Import-Csv $accountHistoryPaths[0]
-    $accountHistory1 = Import-Csv $accountHistoryPaths[1]
+    $accountHistory0 = Import-Csv $script:accountHistoryPaths[0]
+    $accountHistory1 = Import-Csv $script:accountHistoryPaths[1]
     $combinedCsv = $accountHistory0 + $accountHistory1
     # $combinedCsv = @($accountHistory0, $accountHistory1)
 
-    Write-Host "Both csvs combined have $($combinedCsv.Count) items total."
+    Write-Host "Both account history csvs combined have $($combinedCsv.Count) items total."
     $filteredAccountHistory = ""
     
     # Filter account history data by selected month and specific condition
@@ -147,7 +145,7 @@ function ImportBankData() {
             return $true
         }
     }
-    Write-Host "Selected month has $($filteredAccountHistory.Count) items."
+    Write-Host "After trimming extraneous months and years there are $($filteredAccountHistory.Count) items."
     # Write-Host $filteredAccountHistory
     # foreach($item in $filteredAccountHistory){
     #     Write-Host $item
@@ -156,15 +154,13 @@ function ImportBankData() {
 }
 
 function BackupBudget(){
-    Write-Host "Creating backup."
-    Write-Host $script:thisMonthExpenses
-
-    $script:thisMonthExpenses | Export-Csv -Path $script:backupPath
+    $destination = $script:backupPath + (Get-DAte -Format "MM-dd-yyyy-hh-mm") 
+    Copy-Item $script:budgetxlsxPath -Destination $destination 
 }
 
-function Deduplicate($thisMonthExpenses){
+function Deduplicate{
     #Remove the dollar sign and whitespace and change parenthesis to - sign.
-    foreach ($entry in $oldBudgetData){
+    foreach ($entry in $script:oldBudgetData){
         $entry.Amount = $entry.Amount.Replace('$', '')
         $entry.Amount = $entry.Amount.Replace(' ', '')
 
@@ -176,12 +172,10 @@ function Deduplicate($thisMonthExpenses){
         }
     }
 
-    
-
-    Write-Host "Existing budget data has $($oldBudgetData.Count) items."
+    Write-Host "Existing budget data has $($script:oldBudgetData.Count) items."
     $uniqueExpenses = @()
 
-    foreach ($entry in $thisMonthExpenses) {
+    foreach ($entry in $script:accountHistory) {
         $postDate = $entry."Post Date"
         $debit = [decimal]$entry."Debit"
         $credit = [decimal]$entry."Credit"
@@ -195,21 +189,19 @@ function Deduplicate($thisMonthExpenses){
         }
         
         # Check if there's a matching entry in old budget data
-        $matchingBudgetEntry = $oldBudgetData | Where-Object { $_.Date -eq $postDate -and [decimal]$_.Amount -eq $amount}
+        $matchingBudgetEntry = $script:oldBudgetData | Where-Object { $_.Date -eq $postDate -and [decimal]$_.Amount -eq $amount}
 
         # If no match found, consider it a non-duplicate
         if (-not $matchingBudgetEntry) {
             
-
             #Determine method.
             $method = $null
-            if ($entry."Account Number" -eq $rewardsAccountNumber){
+            if ($entry."Account Number" -eq $script:rewardsAccountNumber){
                 $method = "Rewards"
-            }elseif ($entry."Account Number" -eq $checkingAccountNumber) {
+            }elseif ($entry."Account Number" -eq $script:checkingAccountNumber) {
                 $method = "Checking"
             }
             
-
             #Arbitrary exceptions.
             $description = ""
             $category = ""
@@ -293,7 +285,6 @@ function Deduplicate($thisMonthExpenses){
             $uniqueExpenses += $newExpense
         }
     }        
-
     return $uniqueExpenses
 }
 
@@ -302,62 +293,62 @@ function ExportExpenses($uniqueExpenses){
     $uniqueExpenses | Export-Csv $outputPath -NoTypeInformation
 }
 
+function Main{
+        #Test mode?
+    if($testMode){
+        Write-Host "Test mode!" -ForegroundColor Yellow
+    }else{
+        Write-Host "Starting!" -ForegroundColor Green
+    }
 
+    AccountHistoryPaths
+    # Write-Host $script:accountHistoryPaths
 
+    SelectMonthYear
 
-#Test mode?
-if($testMode){
-    Write-Host "Test mode!" -ForegroundColor Yellow
-}else{
-    Write-Host "Starting!" -ForegroundColor Green
-}
-
-AccountHistoryPaths
-
-Write-Host $accountHistoryPaths
-
-SelectMonthYear
-
-#Import budget data
-if($testMode){
-    $userInput = Read-Host "Import from local csv? y/n"
-    # $userInput = "y"
-    if($userInput){
-        $script:oldBudgetData = ImportBudgetFromCsv
+    #Import budget data
+    if($testMode){
+        $userInput = Read-Host "Import from local csv? y/n"
+        # $userInput = "y"
+        if($userInput){
+            $script:oldBudgetData = ImportBudgetFromCsv
+        }else{
+            $script:oldBudgetData = ImportBudgetFromXlsx
+        }
     }else{
         $script:oldBudgetData = ImportBudgetFromXlsx
     }
-}else{
-    $script:oldBudgetData = ImportBudgetFromXlsx
-}
 
-#Import bank data.
-$bankData = ImportBankData
+    #Import bank data.
+    $accountHistory = ImportAccountHistory
 
-Write-Host "About to start backup function"
-BackupBudget
+    #Backup
+    BackupBudget
 
-
-if($null -ne $script:thisMonthExpenses){
-    $uniqueExpenses = Deduplicate($script:thisMonthExpenses)
-}
-
-if($null -ne $uniqueExpenses){
-    Write-Host "Exporting $($uniqueExpenses.Count) items."
-    ExportExpenses($uniqueExpenses)
-}else{
-    Write-Host "No expenses to add."
-}
-
-if(-not $testMode){
-    # $userInput = Read-Host "Delete AccountHistory files? y/n"
-    $userInput = 'n'
-    if($userInput -eq 'y'){
-        Write-Host "Deleting $accountHistoryPaths[0] and $accountHistoryPaths[1]"
-        Remove-ItemSafely $accountHistoryPaths[0]
-        Remove-ItemSafely $accountHistoryPaths[1]
+    #Deduplicate
+    if($null -ne $script:thisMonthExpenses){
+        $uniqueExpenses = Deduplicate
     }
+
+    if($null -ne $uniqueExpenses){
+        Write-Host "Exporting $($uniqueExpenses.Count) items."
+        ExportExpenses($uniqueExpenses)
+    }else{
+        Write-Host "No expenses to add."
+    }
+
+    if(-not $testMode){
+        # $userInput = Read-Host "Delete AccountHistory files? y/n"
+        $userInput = 'n'
+        if($userInput -eq 'y'){
+            Write-Host "Deleting $accountHistoryPaths[0] and $accountHistoryPaths[1]"
+            Remove-ItemSafely $accountHistoryPaths[0]
+            Remove-ItemSafely $accountHistoryPaths[1]
+        }
+    }
+
+    #Open output.csv
+    # Invoke-Item $outputPath
 }
 
-#Open output.csv
-# Invoke-Item $outputPath
+Main
