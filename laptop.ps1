@@ -14,9 +14,9 @@ if($laptop){
 }
 $budgetcsvPath = "C:\PersonalMyCode\UpdateBudget\oldBudgetData.csv"
 $outputPath = "C:\PersonalMyCode\UpdateBudget\output.csv"
-$backupPath = "C:\PersonalMyCode\UpdateBudget\backup.csv"
 $rewardsAccountNumber = "313235393200"
 $checkingAccountNumber = "750501095729"
+$backupPath = "C:\PersonalMyCode\UpdateBudget\backup.csv"
 $pendingItems =""
 $selectedYear = ""
 $selectedMonth = ""
@@ -25,7 +25,6 @@ $abbMonths=@("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","
 $fullMonths=@("January","February","March","April","May","June","July","August","September","October","November","December")
 $accountHistoryPaths = @()
 $oldBudgetData = ""
-$bankData = ""
 
 function AccountHistoryPaths{
     if($testMode){
@@ -49,51 +48,48 @@ function AccountHistoryPaths{
 }
 
 function SelectMonthYear{
-    if($script:testMode){
-        $script:selectedMonth = "8"
-        $script:selectedYear = "2023"
+    if($testMode){
+        $selectedMonth = "8"
+        $selectedYear = "2023"
         $script:abbMonthName = $abbMonths[$selectedMonth -1]
         $fullMonthName = $fullMonths[$selectedMonth -1]
         Write-Host "Hard coded test month and year are " -NoNewline; Write-Host "$fullMonthName $selectedYear" -ForegroundColor Green
     }else{
         $userInput = Read-Host "Use current month? y/n"
         if($userInput -eq 'y'){
-            $script:selectedMonth = Get-Date -Format "MM"
-            $script:abbMonthName = $script:abbMonths[$script:selectedMonth -1]
-            $fullMonthName = $script:fullMonths[$script:selectedMonth -1]
+            $selectedMonth = Get-Date -Format "MM"
+            $script:abbMonthName = $abbMonths[$selectedMonth -1]
+            $fullMonthName = $fullMonths[$selectedMonth -1]
             Write-Host "Current month is " -NoNewline; Write-Host "$fullMonthName" -ForegroundColor Green
         }else{
-            $script:selectedMonth = Read-Host "Enter a number between 1 and 12 for the desired month"
+            $selectedMonth = Read-Host "Enter a number between 1 and 12 for the desired month"
             # $selectedYear = Read-Host "Enter the year"
-            $script:selectedYear = "2023"
-            $script:abbMonthName = $script:abbMonths[$selectedMonth -1]
-            Write-Host $script:abbMonthName
-            $script:fullMonthName = $script:fullMonths[$selectedMonth -1]
+            $selectedYear = "2023"
+            $script:abbMonthName = $abbMonths[$selectedMonth -1]
+            $fullMonthName = $fullMonths[$selectedMonth -1]
             Write-Host "Selected month is " -NoNewline; Write-Host "$fullMonthName" -ForegroundColor Green
         }
     }
     # Convert the selected month to an integer
-    $script:selectedMonth = [int]$script:selectedMonth
-    $script:selectedYear = [int]$script:selectedYear
+    $selectedMonth = [int]$selectedMonth
+    $selectedYear = [int]$selectedYear
 }
 
 function ImportBudgetFromCsv(){
     Write-Host "Importing budget data from the local csv."
-    $script:oldBudgetData = Import-Csv $budgetcsvPath
+    $oldBudgetData = Import-Csv $budgetcsvPath
 }
 
 function ImportBudgetFromXlsx(){
     Write-Host "Importing budget data from 2023Budget.xlsx"
     try{
-        Write-Host "$budgetxlsxPath"
-        Write-Host $script:abbMonthName
-        $excelData = Import-Excel $script:budgetxlsxPath -WorksheetName $script:abbMonthName -NoHeader -ImportColumns @(19,20,21,22,23,24) -startrow 8 -endrow 200
+        $excelData = Import-Excel $budgetxlsxPath -WorksheetName $abbMonthName -NoHeader -ImportColumns @(19,20,21,22,23,24) -startrow 8 -endrow 200
     }catch{
         Write-Host "Importing Excel data failed. Make sure it's closed."
         exit
     }
 
-    #Remove blank items. Add to refined data.
+    #Remove blank items.
     $refinedData = ""
     foreach($item in $excelData){
         if($null -ne $item.P1){
@@ -108,11 +104,10 @@ function ImportBudgetFromXlsx(){
         $refinedData += $nonBlankExpense
         }
     }
-    foreach($item in $refinedData){
-        Write-Host $item
-    }
+    # foreach($item in $refinedData){
+    #     Write-Host $item
+    # }
     return $refinedData
-
 }
 
 function ImportBankData() {
@@ -155,17 +150,16 @@ function ImportBankData() {
     return $filteredAccountHistory
 }
 
-function BackupBudget(){
-    Write-Host "Creating backup."
-    Write-Host $script:thisMonthExpenses
-
-    $script:thisMonthExpenses | Export-Csv -Path $script:backupPath
-}
-
 function Deduplicate($thisMonthExpenses){
+
+    # Write-Host Inside Deduplicate function
+    # foreach($item in $thisMonthExpenses){
+    #     Write-Host $item
+    # }
+
     #Remove the dollar sign and whitespace and change parenthesis to - sign.
     foreach ($entry in $oldBudgetData){
-        $entry.Amount = $entry.Amount.Replace('$', '')
+        $entry.Amount = $entry.Amount.Replace('$', '')  
         $entry.Amount = $entry.Amount.Replace(' ', '')
 
         if($entry.Amount[0] -match "^\("){
@@ -318,30 +312,29 @@ Write-Host $accountHistoryPaths
 
 SelectMonthYear
 
-#Import budget data
+
+#Import budget data.
 if($testMode){
-    $userInput = Read-Host "Import from local csv? y/n"
+    $userInput = Read-Host "Import budget from local csv? y/n"
     # $userInput = "y"
     if($userInput){
-        $script:oldBudgetData = ImportBudgetFromCsv
+        $thisMonthExpenses = ImportBudgetFromCsv
     }else{
-        $script:oldBudgetData = ImportBudgetFromXlsx
+        $thisMonthExpenses = ImportBudgetFromXlsx
     }
 }else{
-    $script:oldBudgetData = ImportBudgetFromXlsx
+    $thisMonthExpenses = ImportBudgetFromXlsx
 }
 
-#Import bank data.
-$bankData = ImportBankData
+#Import bank data. 
+$thisMonthExpenses = ImportBankData
 
-Write-Host "About to start backup function"
-BackupBudget
-
-
-if($null -ne $script:thisMonthExpenses){
-    $uniqueExpenses = Deduplicate($script:thisMonthExpenses)
+#Deduplicate.
+if($null -ne $thisMonthExpenses){
+    $uniqueExpenses = Deduplicate($thisMonthExpenses)
 }
 
+#Export.
 if($null -ne $uniqueExpenses){
     Write-Host "Exporting $($uniqueExpenses.Count) items."
     ExportExpenses($uniqueExpenses)
@@ -349,9 +342,9 @@ if($null -ne $uniqueExpenses){
     Write-Host "No expenses to add."
 }
 
+#Delete files.
 if(-not $testMode){
-    # $userInput = Read-Host "Delete AccountHistory files? y/n"
-    $userInput = 'n'
+    $userInput = Read-Host "Delete AccountHistory files? y/n"
     if($userInput -eq 'y'){
         Write-Host "Deleting $accountHistoryPaths[0] and $accountHistoryPaths[1]"
         Remove-ItemSafely $accountHistoryPaths[0]
