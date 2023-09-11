@@ -1,3 +1,1 @@
-$doink = "c:\test\"
-$output = $doink + "test.txt"
-Write-Host $output
+if($env:computername -eq "PC_JFLUCKIGER"){
