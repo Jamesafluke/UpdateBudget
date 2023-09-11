@@ -2,37 +2,26 @@ Import-Module ImportExcel
 # Install-Module Recycle
 
 $outputPath = "C:\PersonalMyCode\UpdateBudget\output.csv"
-$backupPath = "C:\PersonalMyCode\UpdateBudget\BudgetBackup\"
 $rewardsAccountNumber = "313235393200"
 $checkingAccountNumber = "750501095729"
-$pendingItems =""
-
-$oldBudgetData = ""
-$accountHistory = ""
 
 
 function Main{
 
     $month = SelectMonth
     $year = SelectYear
-
-    Write-Host "month is $month"
-    Write-Host "year is $year"
     
+    $accountHistory = ImportAccountHistory $year $month
 
-    $accountHistory = ImportAccountHistory($year, $month)
-    Write-Host $accountHistOry
-
-    $existingBudget = ImportExistingBudget($month)
-    Write-Host $existingBudget
+    $existingBudget = ImportExistingBudget $month
 
     BackupBudget
     
     #Deduplicate
-    $uniqueExpenses = Deduplicate
+    $uniqueExpenses = Deduplicate $accountHistory $existingBudget
     
     Write-Host "Exporting $($uniqueExpenses.Count) items."
-    ExportExpenses($uniqueExpenses)
+    ExportExpenses $uniqueExpenses
     
     if(-not $testMode){
         # $userInput = Read-Host "Delete AccountHistory files? y/n"
@@ -48,20 +37,10 @@ function Main{
 # Invoke-Item $outputPath
 }
 
-function TestMode{
-    #Test mode?
-    $userInput = Read-Host "Turn on test mode? y/n"
-    if($userInput -eq "y"){
-        Write-Host "Test mode!" -ForegroundColor Yellow
-        return $true
-    }else{
-        Write-Host "Test mode off"
-        return $false
-    }    
-}
 
 function SelectYear{
-    return "2023"
+    $year = "2023"
+    return [int]$year
 }
 
 function SelectMonth{ 
@@ -80,7 +59,16 @@ function SelectMonth{
     $fullMonthName = $fullMonths[$selectedMonth -1]
     Write-Host "Selected month is " -NoNewline; Write-Host "$fullMonthName" -ForegroundColor Green
     # Convert the selected month to an integer
+
     return [int]$selectedMonth
+}
+
+function XlsxPath{
+    if($env:computername -eq "PC_JFLUCKIGER"){
+        return "C:\Users\jfluckiger\OneDrive\Budget\2023Budget.xlsx"
+    }else{
+        return "C:\Users\james\OneDrive\Budget\2023Budget.xlsx"
+    }
 }
 
 function ImportAccountHistory{
@@ -88,14 +76,18 @@ function ImportAccountHistory{
         $year,
         $month
     )
+    Write-Host $year
+    Write-Host $month
     $accountHistoryPaths = @()
     if($env:computername -eq "PC_JFLUCKIGER"){
+        Write-Host "Laptop detected."
         $accountHistoryPaths = @(
             "C:\Users\jfluckiger\Downloads\AccountHistory.csv",
             "C:\Users\jfluckiger\Downloads\AccountHistory (1).csv"            
         )
     }else{
         $accountHistoryPaths = @(
+            Write-Host "Desktop detected."
             "C:\Users\james\Downloads\AccountHistory.csv",
             "C:\Users\james\Downloads\AccountHistory (1).csv"
         )
@@ -118,29 +110,22 @@ function ImportAccountHistory{
 
             $postDate = Get-Date $entry."Post Date"
             
-            # Check if the year is 2023 and the month matches
+            # Check if the year and month match
             if ([int]$postDate.Year -ne $year) {
-                # Write-Host "Year doesn't match $selectedYear"
                 return $false
             }   
             if ([int]$postDate.Month -ne $month){
-                # Write-Host "Month doesn't match $selectedMonth"
                 return $false
             }
             return $true
         }
     }
-    Write-Host "After trimming extraneous months and years there are $($filteredAccountHistory.Count) items."
-    # Write-Host $filteredAccountHistory
-    # foreach($item in $filteredAccountHistory){
-    #     Write-Host $item
-    # }
+    Write-Host "After trimming extraneous months and years there are $($filteredAccountHistory.Count) account history items."
     return $filteredAccountHistory
 }
 
 function ImportExistingBudget{
     param(
-        $laptop,
         $month #for $abbMonthName
     )
 
@@ -164,14 +149,7 @@ function ImportExistingBudget{
         Write-Host $abbMonthName
         
         #Determine path.
-        $xlsxPath = ""
-        if($env:computername -eq "PC_JFLUCKIGER"){
-            Write-Host "Laptop" -ForegroundColor Blue
-            $xlsxPath = "C:\Users\jfluckiger\OneDrive\Budget\2023Budget.xlsx"
-        }else{
-            Write-Host "Desktop" -ForegroundColor Blue
-            $xlsxPath = "C:\Users\james\OneDrive\Budget\2023Budget.xlsx"
-        }
+        $xlsxPath = (XlsxPath)
         Write-Host "Importing budget data from 2023Budget.xlsx"
         try{
             $rawXlsxData = Import-Excel $xlsxPath -WorksheetName $abbMonthName -NoHeader -ImportColumns @(19,20,21,22,23,24) -startrow 8 -endrow 200
@@ -199,93 +177,18 @@ function ImportExistingBudget{
     return $refinedXlsxData
 }
 
-
-
-
-
-
-function ImportBudgetFromCsvOld(){ #Sets $script:oldBudgetData.
-    Write-Host "Importing budget data from the local csv."
-    $script:oldBudgetData = Import-Csv $budgetcsvPath
-}
-
-function ImportBudgetFromXlsxOld(){
-    Write-Host "Importing budget data from 2023Budget.xlsx"
-    try{
-        # Write-Host $script:budgetXlsxPath
-        # Write-Host $script:abbMonthName
-        $rawXlsxData = Import-Excel $script:budgetXlsxPath -WorksheetName $script:abbMonthName -NoHeader -ImportColumns @(19,20,21,22,23,24) -startrow 8 -endrow 200
-    }catch{
-        Write-Host "Importing Excel data failed. Make sure it's closed."
-        exit
-    }
-
-    #Remove blank items. Add to refined data.
-    $refinedXlsxData = ""
-    foreach($item in $rawXlsxData){
-        if($null -ne $item.P1){
-            $nonBlankExpense = [PSCustomObject]@{
-                Date = [string](Get-Date $item.P1 -Format "MM/dd/yyyy")
-                Item = $item.P2
-                Description = $item.P3
-                Method = $item.P4
-                Category = $item.P5
-                Amount = [decimal]$item.P6
-            }
-        $refinedXlsxData += $nonBlankExpense
-        }
-    }
-    # Write-Host $refinedXlsxData
-    return $refinedXlsxData
-
-}
-
-function ImportAccountHistoryOld() {
-    $combinedCsv = ""
-    $accountHistory0 = Import-Csv $script:accountHistoryPaths[0]
-    $accountHistory1 = Import-Csv $script:accountHistoryPaths[1]
-    $combinedCsv = $accountHistory0 + $accountHistory1
-    # $combinedCsv = @($accountHistory0, $accountHistory1)
-
-    Write-Host "Both account history csvs combined have $($combinedCsv.Count) items total."
-    $filteredAccountHistory = ""
-    
-    # Filter account history data by selected month and specific condition
-    $filteredAccountHistory = $combinedCsv | Where-Object {
-        $entry = $_
-        if($entry.Status -eq "Pending"){
-            Write-Host "Found a pending $entry"
-            $pendingItems += $entry
-        }else{
-
-            $postDate = Get-Date $entry."Post Date"
-            
-            # Check if the year is 2023 and the month matches
-            if ([int]$postDate.Year -ne $selectedYear) {
-                # Write-Host "Year doesn't match $selectedYear"
-                return $false
-            }   
-            if ([int]$postDate.Month -ne $selectedMonth){
-                # Write-Host "Month doesn't match $selectedMonth"
-                return $false
-            }
-            return $true
-        }
-    }
-    Write-Host "After trimming extraneous months and years there are $($filteredAccountHistory.Count) items."
-    # Write-Host $filteredAccountHistory
-    # foreach($item in $filteredAccountHistory){
-    #     Write-Host $item
-    # }
-    return $filteredAccountHistory
-}
-
 function BackupBudget(){
-    $destination = $script:backupPath + (Get-DAte -Format "MM-dd-yyyy-hh-mm") 
-    Copy-Item $script:budgetXlsxPath -Destination $destination 
+    $backupPath = "C:\PersonalMyCode\UpdateBudget\BudgetBackup\"
+    $destination = $backupPath + (Get-Date -Format "MM-dd-yyyy-hh-mm")
+    $path = XlsxPath
+    Copy-Item $path -Destination $destination 
 }
 
 function Deduplicate{
+    param(
+        $accountHistory,
+        $existingBudget
+    )
     #Remove the dollar sign and whitespace and change parenthesis to - sign.
     foreach ($entry in $script:oldBudgetData){
         $entry.Amount = $entry.Amount.Replace('$', '')
