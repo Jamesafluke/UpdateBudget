@@ -3,7 +3,7 @@ Import-Module ImportExcel
 
 
 $testMode = $false
-$laptop = $true
+$laptop = $false
 
 if($laptop){
     Write-Host "Laptop" -ForegroundColor Blue
@@ -28,20 +28,42 @@ $accountHistoryPaths = @()
 $oldBudgetData = ""
 $accountHistory = ""
 
+# function AccountHistoryPathsOld{ # Determine the path for the location of the accounthistory csv files based on test mode and computer. Updates $script:accountHistoryPaths
+#     if($script:testMode){
+#         $script:accountHistoryPaths = @(
+#             "C:\PersonalMyCode\UpdateBudget\AccountHistory.csv",
+#             "C:\PersonalMyCode\UpdateBudget\AccountHistory (1).csv"
+#         )
+#     }else{
+#         if($script:laptop){
+#             $script:accountHistoryPaths = @(
+#                 "C:\Users\jfluckiger\Downloads\AccountHistory.csv",
+#                 "C:\Users\jfluckiger\Downloads\AccountHistory (1).csv"            
+#             )
+#         }else{
+#             $script:accountHistoryPaths = @(
+#                 "C:\Users\james\Downloads\AccountHistory.csv",
+#                 "C:\Users\james\Downloads\AccountHistory (1).csv"
+#             )
+#         }
+#     }
+# }
+
 function AccountHistoryPaths{
-    if($script:testMode){
-        $script:accountHistoryPaths = @(
+    param($testMode, $laptop)
+    if($testMode){
+        return @(
             "C:\PersonalMyCode\UpdateBudget\AccountHistory.csv",
             "C:\PersonalMyCode\UpdateBudget\AccountHistory (1).csv"
         )
     }else{
-        if($script:laptop){
-            $script:accountHistoryPaths = @(
+        if($laptop){
+            return = @(
                 "C:\Users\jfluckiger\Downloads\AccountHistory.csv",
                 "C:\Users\jfluckiger\Downloads\AccountHistory (1).csv"            
             )
         }else{
-            $script:accountHistoryPaths = @(
+            return = @(
                 "C:\Users\james\Downloads\AccountHistory.csv",
                 "C:\Users\james\Downloads\AccountHistory (1).csv"
             )
@@ -49,7 +71,8 @@ function AccountHistoryPaths{
     }
 }
 
-function SelectMonthYear{
+
+function SelectMonthYear{ #Sets $script:selectedMonth and $script:selectedYear.
     if($script:testMode){
         $script:selectedMonth = "8"
         $script:selectedYear = "2023"
@@ -78,7 +101,7 @@ function SelectMonthYear{
     $script:selectedYear = [int]$script:selectedYear
 }
 
-function ImportBudgetFromCsv(){
+function ImportBudgetFromCsv(){ #Sets $script:oldBudgetData.
     Write-Host "Importing budget data from the local csv."
     $script:oldBudgetData = Import-Csv $budgetcsvPath
 }
@@ -111,6 +134,7 @@ function ImportBudgetFromXlsx(){
     }
     # Write-Host $refinedData
     return $refinedData
+
 }
 
 function ImportAccountHistory() {
@@ -301,7 +325,7 @@ function Main{
         Write-Host "Starting!" -ForegroundColor Green
     }
 
-    AccountHistoryPaths
+    $accountHistory = AccountHistoryPaths
     # Write-Host $script:accountHistoryPaths
 
     SelectMonthYear
@@ -320,13 +344,14 @@ function Main{
     }
 
     #Import bank data.
-    $accountHistory = ImportAccountHistory
+    $script:accountHistory = ImportAccountHistory
 
     #Backup
     BackupBudget
 
     #Deduplicate
-    if($null -ne $script:thisMonthExpenses){
+    Write-Host $script:accountHistory
+    if($null -ne $script:accountHistory){
         $uniqueExpenses = Deduplicate
     }
 
