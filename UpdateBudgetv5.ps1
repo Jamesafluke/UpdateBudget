@@ -1,42 +1,38 @@
 Import-Module ImportExcel
 # Install-Module Recycle
 
-$outputPath = "C:\PersonalMyCode\UpdateBudget\output.csv"
-$rewardsAccountNumber = "313235393200"
-$checkingAccountNumber = "750501095729"
-
-
 function Main{
+    
+    Write-Host "Welcome to Budginator!" -ForegroundColor Green
 
+    StartAhk
+
+    $outputPath = "C:\PersonalMyCode\UpdateBudget\output.csv"
     $month = SelectMonth
     $year = SelectYear
+
+    $accountHistoryPaths = SetAccountHistoryPaths
     
-    $accountHistory = ImportAccountHistory $year $month
+    $accountHistory = ImportAccountHistory $year $month $accountHistoryPaths
 
     $existingBudget = ImportExistingBudget $month
 
     BackupBudget
-    
-    #Deduplicate
-    $uniqueExpenses = Deduplicate $accountHistory $existingBudget
-    
-    Write-Host "Exporting $($uniqueExpenses.Count) items."
-    ExportExpenses $uniqueExpenses
-    
-    if(-not $testMode){
-        # $userInput = Read-Host "Delete AccountHistory files? y/n"
-        $userInput = 'n'
-        if($userInput -eq 'y'){
-            Write-Host "Deleting $accountHistoryPaths[0] and $accountHistoryPaths[1]"
-            Remove-ItemSafely $accountHistoryPaths[0]
-            Remove-ItemSafely $accountHistoryPaths[1]
-        }
-    }
 
-#Open output.csv
-# Invoke-Item $outputPath
+    $verifiedExpenses = Deduplicate $accountHistory $existingBudget
+    
+    ExportExpenses $verifiedExpenses $outputPath
+
+    DeleteAccountHistoryFiles $accountHistoryPaths
+    
+    OpenOutput $outputPath
 }
-
+function StartAhk{
+    $userInput = Read-Host "Download account history? y/n"
+    if($userInput -eq "y"){
+        Invoke-Item "C:\PersonalMyCode\UpdateBudget\AHK\dowloadUccu.ahk"
+    }
+}
 
 function SelectYear{
     $year = "2023"
@@ -47,7 +43,6 @@ function SelectMonth{
     param(
         
     )
-    $fullMonths=@("January","February","March","April","May","June","July","August","September","October","November","December")
 
     $userInput = Read-Host "Use current month? y/n"
     if($userInput -eq 'y'){
@@ -56,28 +51,13 @@ function SelectMonth{
         $selectedMonth = Read-Host "Enter a number between 1 and 12 for the desired month"
     }
     
-    $fullMonthName = $fullMonths[$selectedMonth -1]
-    Write-Host "Selected month is " -NoNewline; Write-Host "$fullMonthName" -ForegroundColor Green
-    # Convert the selected month to an integer
+    Write-Host "Selected month is " -NoNewline; Write-Host (GetFullMonthName $month) -ForegroundColor Green
 
     return [int]$selectedMonth
 }
 
-function XlsxPath{
-    if($env:computername -eq "PC_JFLUCKIGER"){
-        return "C:\Users\jfluckiger\OneDrive\Budget\2023Budget.xlsx"
-    }else{
-        return "C:\Users\james\OneDrive\Budget\2023Budget.xlsx"
-    }
-}
 
-function ImportAccountHistory{
-    param(
-        $year,
-        $month
-    )
-    Write-Host $year
-    Write-Host $month
+function SetAccountHistoryPaths{
     $accountHistoryPaths = @()
     if($env:computername -eq "PC_JFLUCKIGER"){
         Write-Host "Laptop detected."
@@ -92,7 +72,31 @@ function ImportAccountHistory{
             "C:\Users\james\Downloads\AccountHistory (1).csv"
         )
     }
+    return $accountHistoryPaths
+}
 
+function GetXlsxPath{
+    if($env:computername -eq "PC_JFLUCKIGER"){
+        return "C:\Users\jfluckiger\OneDrive\Budget\2023Budget.xlsx"
+    }else{
+        return "C:\Users\james\OneDrive\Budget\2023Budget.xlsx"
+    }
+}
+
+function GetFullMonthName{
+    param(
+        $month
+    )
+    $fullMonths=@("January","February","March","April","May","June","July","August","September","October","November","December")
+    return $fullMonths[$month -1]
+}
+
+function ImportAccountHistory{
+    param(
+        $year,
+        $month,
+        $accountHistoryPaths
+    )
     $accountHistory0 = Import-Csv $accountHistoryPaths[0]
     $accountHistory1 = Import-Csv $accountHistoryPaths[1]
     $combinedCsv = $accountHistory0 + $accountHistory1
@@ -120,7 +124,7 @@ function ImportAccountHistory{
             return $true
         }
     }
-    Write-Host "After trimming extraneous months and years there are $($filteredAccountHistory.Count) account history items."
+    Write-Host "After trimming extraneous months and years there are " -NoNewLine; Write-Host $filteredAccountHistory.Count -NoNewLine -ForegroundColor Green; Write-Host "account history items in " -NoNewLine; Write-Host (GetFullMonthName $month) $year -NoNewLine -ForegroundColor Green; Write-Host "."
     return $filteredAccountHistory
 }
 
@@ -138,28 +142,28 @@ function ImportExistingBudget{
     }
 
     if($source -eq "csv"){
-        $budgetcsvPath = "C:\PersonalMyCode\UpdateBudget\oldBudgetData.csv"
+        $budgetcsvPath = "C:\PersonalMyCode\UpdateBudget\existingBudgetData.csv"
         Write-Host "Importing budget data from the local csv."
-        return = Import-Csv $budgetcsvPath  
+        return Import-Csv $budgetcsvPath  
 
     }elseif($source -eq "xlsx"){
+        $rawXlsxData = @()
         #Determine $abbMonthName
         $abbMonths=@("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
         $abbMonthName = $abbMonths[$month -1]
-        Write-Host $abbMonthName
         
         #Determine path.
-        $xlsxPath = (XlsxPath)
+        $GetXlsxPath = (GetXlsxPath)
         Write-Host "Importing budget data from 2023Budget.xlsx"
         try{
-            $rawXlsxData = Import-Excel $xlsxPath -WorksheetName $abbMonthName -NoHeader -ImportColumns @(19,20,21,22,23,24) -startrow 8 -endrow 200
+            $rawXlsxData = Import-Excel $GetXlsxPath -WorksheetName $abbMonthName -NoHeader -ImportColumns @(19,20,21,22,23,24) -startrow 8 -endrow 200
         }catch{
             Write-Host "Importing Excel data failed. Make sure it's closed."
             exit
         }
 
         #Remove blank items. Add to refined data.
-        $refinedXlsxData = ""
+        $refinedXlsxData = @()
         foreach($item in $rawXlsxData){
             if($null -ne $item.P1){
                 $nonBlankExpense = [PSCustomObject]@{
@@ -180,7 +184,7 @@ function ImportExistingBudget{
 function BackupBudget(){
     $backupPath = "C:\PersonalMyCode\UpdateBudget\BudgetBackup\"
     $destination = $backupPath + (Get-Date -Format "MM-dd-yyyy-hh-mm")
-    $path = XlsxPath
+    $path = GetXlsxPath
     Copy-Item $path -Destination $destination 
 }
 
@@ -189,28 +193,16 @@ function Deduplicate{
         $accountHistory,
         $existingBudget
     )
-    #Remove the dollar sign and whitespace and change parenthesis to - sign.
-    foreach ($entry in $script:oldBudgetData){
-        $entry.Amount = $entry.Amount.Replace('$', '')
-        $entry.Amount = $entry.Amount.Replace(' ', '')
 
-        if($entry.Amount[0] -match "^\("){
-            # $entry.Amount = $entry.Amount -replace "^\(", "-"
-            $entry.Amount = "-" + $entry.Amount
-            $entry.Amount = $entry.Amount.Remove(1,1)
-            $entry.Amount = $entry.Amount.Substring(0, $entry.Amount.Length - 1)
-        }
-    }
+    Write-Host "Existing budget data has " -NoNewLine; Write-Host $existingBudget.Count -NoNewLine -ForegroundColor Green; Write-Host " items."
+    $verifiedExpenses = @()
 
-    Write-Host "Existing budget data has $($script:oldBudgetData.Count) items."
-    $uniqueExpenses = @()
-
-    foreach ($entry in $script:accountHistory) {
+    foreach ($entry in $accountHistory) {
         $postDate = $entry."Post Date"
         $debit = [decimal]$entry."Debit"
         $credit = [decimal]$entry."Credit"
 
-        #Determine debit or credit.
+        #Set $amount.
         $amount = $null
         if ($debit -ne ""){
             $amount = $debit
@@ -218,17 +210,18 @@ function Deduplicate{
             $amount = $credit * -1
         }
         
-        # Check if there's a matching entry in old budget data
-        $matchingBudgetEntry = $script:oldBudgetData | Where-Object { $_.Date -eq $postDate -and [decimal]$_.Amount -eq $amount}
+        # Check if there's a matching entry in existing budget data
+        $discardableBudgetEntry = $existingBudget | Where-Object { $_.Date -eq $postDate -and [decimal]$_.Amount -eq $amount}
 
+        $duplicateCount = 0
         # If no match found, consider it a non-duplicate
-        if (-not $matchingBudgetEntry) {
+        if (-not $discardableBudgetEntry) {
             
             #Determine method.
             $method = $null
-            if ($entry."Account Number" -eq $script:rewardsAccountNumber){
+            if ($entry."Account Number" -eq "313235393200"){
                 $method = "Rewards"
-            }elseif ($entry."Account Number" -eq $script:checkingAccountNumber) {
+            }elseif ($entry."Account Number" -eq "750501095729") {
                 $method = "Checking"
             }
             
@@ -312,15 +305,46 @@ function Deduplicate{
                 Category = $category
                 Amount = $amount
             }
-            $uniqueExpenses += $newExpense
+            $verifiedExpenses += $newExpense
+        }else{
+            #Is a duplicate.
+            $duplicateCount ++
         }
     }        
-    return $uniqueExpenses
+    Write-Host $duplicateCount -NoNewLine -ForegroundColor Green; Write-Host " duplicates. There are " -NoNewLine; Write-Host $verifiedExpenses.count -NoNewLine -ForegroundColor Green; Write-Host " expenses ready to be exported."
+    return $verifiedExpenses
 }
 
-function ExportExpenses($uniqueExpenses){
-    Write-Host "Export!"
-    $uniqueExpenses | Export-Csv $outputPath -NoTypeInformation
+function ExportExpenses{
+    param(
+        $verifiedExpenses,
+        $outputPath
+    )
+    Write-Host "Exporting!"
+    $verifiedExpenses | Export-Csv $outputPath -NoTypeInformation
+}
+
+function DeleteAccountHistoryFiles{
+    param(
+        $accountHistoryPaths
+    )
+    $userInput = Read-Host "Delete AccountHistory files? y/n"
+    # $userInput = 'n'
+    if($userInput -eq 'y'){
+        Write-Host "Deleting $accountHistoryPaths[0] and $accountHistoryPaths[1]"
+        Remove-ItemSafely $accountHistoryPaths[0]
+        Remove-ItemSafely $accountHistoryPaths[1]
+    }
+}
+
+function OpenOutput{
+    param(
+        $outputPath
+    )
+    $userInput = Read-Host "Open output.csv? y/n"
+    if($userInput -eq "y"){
+        Invoke-Item $outputPath
+    }
 }
 
 Main
