@@ -30,7 +30,12 @@ function Main{
 function StartAhk{
     $userInput = Read-Host "Download account history? y/n"
     if($userInput -eq "y"){
-        Invoke-Item "C:\PersonalMyCode\UpdateBudget\AHK\dowloadUccu.ahk"
+        if($env:computername -eq "PC_JFLUCKIGER"){
+            Invoke-Item "C:\PersonalMyCode\UpdateBudget\AHK\laptopDownloadUccu.ahk"
+        }
+        else{
+            Invoke-Item "C:\PersonalMyCode\UpdateBudget\AHK\desktopDownloadUccu.ahk"
+        }
     }
 }
 
@@ -55,7 +60,6 @@ function SelectMonth{
 
     return [int]$selectedMonth
 }
-
 
 function SetAccountHistoryPaths{
     $accountHistoryPaths = @()
