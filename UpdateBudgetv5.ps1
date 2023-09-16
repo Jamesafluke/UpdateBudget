@@ -31,9 +31,11 @@ function StartAhk{
     $userInput = Read-Host "Download account history? y/n"
     if($userInput -eq "y"){
         if($env:computername -eq "PC_JFLUCKIGER"){
+            Write-Host "Laptop AHK"
             Invoke-Item "C:\PersonalMyCode\UpdateBudget\AHK\laptopDownloadUccu.ahk"
         }
         else{
+            Write-Host "Desktop AHK"
             Invoke-Item "C:\PersonalMyCode\UpdateBudget\AHK\desktopDownloadUccu.ahk"
         }
     }
@@ -128,7 +130,7 @@ function ImportAccountHistory{
             return $true
         }
     }
-    Write-Host "After trimming extraneous months and years there are " -NoNewLine; Write-Host $filteredAccountHistory.Count -NoNewLine -ForegroundColor Green; Write-Host "account history items in " -NoNewLine; Write-Host (GetFullMonthName $month) $year -NoNewLine -ForegroundColor Green; Write-Host "."
+    Write-Host "After trimming extraneous months and years there are " -NoNewLine; Write-Host $filteredAccountHistory.Count -NoNewLine -ForegroundColor Green; Write-Host " account history items in " -NoNewLine; Write-Host (GetFullMonthName $month) $year -NoNewLine -ForegroundColor Green; Write-Host "."
     return $filteredAccountHistory
 }
 
@@ -201,6 +203,7 @@ function Deduplicate{
     Write-Host "Existing budget data has " -NoNewLine; Write-Host $existingBudget.Count -NoNewLine -ForegroundColor Green; Write-Host " items."
     $verifiedExpenses = @()
 
+    $duplicateCount = 0
     foreach ($entry in $accountHistory) {
         $postDate = $entry."Post Date"
         $debit = [decimal]$entry."Debit"
@@ -215,14 +218,11 @@ function Deduplicate{
         }
         
         # Check if there's a matching entry in existing budget data
-        $discardableBudgetEntry = $existingBudget | Where-Object { $_.Date -eq $postDate -and [decimal]$_.Amount -eq $amount}
+        $duplicateEntry = $existingBudget | Where-Object { $_.Date -eq $postDate -and [decimal]$_.Amount -eq $amount}
 
-        $duplicateCount = 0
-        # If no match found, consider it a non-duplicate
-        if (-not $discardableBudgetEntry) {
+        if ($null -eq $duplicateEntry){ #Isn't a duplicate entry.
             
             #Determine method.
-            $method = $null
             if ($entry."Account Number" -eq "313235393200"){
                 $method = "Rewards"
             }elseif ($entry."Account Number" -eq "750501095729") {
@@ -230,8 +230,6 @@ function Deduplicate{
             }
             
             #Arbitrary exceptions.
-            $description = ""
-            $category = ""
             if ($entry.Description -eq "PennyMac") {
                 $description = "Mortgage"
                 $category = "Mortgage"
@@ -310,8 +308,7 @@ function Deduplicate{
                 Amount = $amount
             }
             $verifiedExpenses += $newExpense
-        }else{
-            #Is a duplicate.
+        }else{ #Is a duplicate entry.
             $duplicateCount ++
         }
     }        
